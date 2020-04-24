@@ -26,9 +26,9 @@
     {"name": "generation", "type": "long"},
     {"name": "metageneration", "type": "long"},
     {"name": "storage_class", "type": "string"},
-    {"name": "created", "type": "long", "logicalType": "timestamp-millis"},
-    {"name": "deleted", "type": "long", "logicalType": "timestamp-millis"},
-    {"name": "updated", "type": "long", "logicalType": "timestamp-millis"},
+    {"name": "created", "type": ["null", "long"], "logicalType": "timestamp-millis"},
+    {"name": "deleted", "type": ["null", "long"], "logicalType": "timestamp-millis"},
+    {"name": "updated", "type": ["null", "long"], "logicalType": "timestamp-millis"},
     {"name": "customer_key_sha256", "type": "string"},
     {"name": "kms_key_name", "type": "string"},
     {"name": "etag", "type": "string"}

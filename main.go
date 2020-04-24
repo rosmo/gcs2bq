@@ -109,9 +109,21 @@ func objectToAvro(ProjectId string, file storage.ObjectAttrs) (*AvroFile, error)
 	avroFile.Generation = file.Generation
 	avroFile.Metageneration = file.Metageneration
 	avroFile.StorageClass = file.StorageClass
-	avroFile.Created = file.Created.UnixNano() / 1000000
-	avroFile.Deleted = file.Deleted.UnixNano() / 1000000
-	avroFile.Updated = file.Updated.UnixNano() / 1000000
+	if !file.Created.IsZero() {
+		avroFile.Created = file.Created.UnixNano() / 1000
+	} else {
+		avroFile.Created = 0
+	}
+	if !file.Deleted.IsZero() {
+		avroFile.Deleted = file.Deleted.UnixNano() / 1000
+	} else {
+		avroFile.Deleted = 0
+	}
+	if !file.Updated.IsZero() {
+		avroFile.Updated = file.Updated.UnixNano() / 1000
+	} else {
+		avroFile.Updated = 0
+	}
 	avroFile.CustomerKeySHA256 = file.CustomerKeySHA256
 	avroFile.KMSKeyName = file.KMSKeyName
 	avroFile.Etag = file.Etag
