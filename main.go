@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"sync"
 
@@ -20,6 +21,7 @@ import (
 var (
 	outputFile      *string
 	includeVersions *bool
+	VERSION         string = "0.1"
 )
 
 type GcsFile struct {
@@ -105,6 +107,7 @@ func objectToAvro(ProjectId string, file storage.ObjectAttrs) (*AvroFile, error)
 	avroFile.MD5 = hex.EncodeToString(file.MD5)
 	avroFile.CRC32C = int32(file.CRC32C)
 	avroFile.MediaLink = file.MediaLink
+	// Metadata is not returned with the query
 	//avroFile.Metadata = file.Metadata
 	avroFile.Generation = file.Generation
 	avroFile.Metageneration = file.Metageneration
@@ -157,6 +160,8 @@ func processProject(wg *sync.WaitGroup, ctx *context.Context, objectCh chan GcsF
 }
 
 func main() {
+	os.Stderr.WriteString(fmt.Sprintf("Google Cloud Storage object metadata to BigQuery, version %s\n", VERSION))
+
 	outputFile = flag.String("file", "gcs.avro", "output file name (default gcs.avro)")
 	includeVersions = flag.Bool("versions", false, "include GCS object versions")
 	flag.Parse()
