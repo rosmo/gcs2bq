@@ -1,10 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
-export HOME=/home
+# For running in container
+if [ "${HOME}" == "/"] ; then
+    export HOME=/home
+fi
 
 error() {
     echo "ERROR: $1" >&2
-    sleep 600
     exit $2
 }
 
