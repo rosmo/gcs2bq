@@ -10,6 +10,11 @@ error() {
     exit $2
 }
 
+if [ -n "${GOOGLE_PROJECT}" ] 
+then
+    export GCS2BQ_PROJECT="${GOOGLE_PROJECT}"
+fi
+
 if [ -z "${GCS2BQ_PROJECT}" ] 
 then
     error "Error: Missing BigQuery project (set environment variable GCS2BQ_PROJECT)." 1
@@ -50,5 +55,7 @@ bq mk --project_id="${GCS2BQ_PROJECT}" --location="${GCS2BQ_LOCATION}" "${GCS2BQ
 
 bq load --project_id="${GCS2BQ_PROJECT}" --location="${GCS2BQ_LOCATION}" --schema bigquery.schema --source_format=AVRO --use_avro_logical_types --replace=true "${GCS2BQ_DATASET}.${GCS2BQ_TABLE}" "gs://${GCS2BQ_BUCKET}/${GCS2BQ_FILENAME}" || \
   error "Failed to load gs://${GCS2BQ_BUCKET}/${GCS2BQ_FILENAME} to BigQuery table ${GCS2BQ_DATASET}.${GCS2BQ_TABLE}!" 4
+
+gsutil rm "gs://${GCS2BQ_BUCKET}/${GCS2BQ_FILENAME}" || error "Failed deleting gs://${GCS2BQ_BUCKET}/${GCS2BQ_FILENAME}!" 5
 
 rm -f "${GCS2BQ_FILE}"

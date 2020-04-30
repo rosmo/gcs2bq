@@ -47,6 +47,13 @@ Usage of ./gcs2bq:
 You can also use the supplied `run.sh` scripts, which accepts the following
 environment variables as input:
 
+- `GCS2BQ_PROJECT`: project ID where the storage bucket and BigQuery dataset resides in
+- `GCS2BQ_DATASET`: BigQuery dataset name (eg. `gcs2bq`)
+- `GCS2BQ_TABLE`: BigQuery table name (eg. `objects`)
+- `GCS2BQ_BUCKET`: Bucket for storing the temporary Avro file to be loaded into BigQuery (no `gs://` prefix)
+- `GCS2BQ_LOCATION`: Location for the bucket and dataset (if they need to be created, eg. `EU`)
+- `GCS2BQ_VERSIONS`: Set to non-empty if you want to retrieve object versions as well
+
 ## IAM permissions on GCP
 
 To be able to discover all projects and buckets, the Service Account that you
