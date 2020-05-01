@@ -69,7 +69,7 @@ permission to retrieve ACLs):
 
 - Storage Object Viewer: `roles/storage.objectViewer`
 
-There is also a custom role in [gcs2bq-custom-role.yaml](gvs2bq-custom-role.yaml) that
+There is also a custom role in [gcs2bq-custom-role.yaml](gcs2bq-custom-role.yaml) that
 only has the necessary permissions. See the file for instructions.
 
 To write the data through GCS to BigQuery, you'll need in a project that hosts the

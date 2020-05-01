@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"runtime"
 	"sync"
 
 	"cloud.google.com/go/storage"
@@ -35,6 +36,10 @@ var (
 	outputFile      *string
 	includeVersions *bool
 	VERSION         string = "0.1"
+	BUFFER_SIZE     *int
+	GOMAXPROCS      *int
+	EXIT_STATUS     int    = 0
+	AVRO_SCHEMA     string = "gcs2bq.avsc"
 )
 
 type GcsFile struct {
@@ -149,7 +154,7 @@ func objectToAvro(ProjectId string, file storage.ObjectAttrs) (*AvroFile, error)
 func processProject(wg *sync.WaitGroup, ctx *context.Context, objectCh chan GcsFile, project cloudresourcemanager.Project) {
 	defer wg.Done()
 
-	glog.Warningf("Processing project %s...", project.ProjectId)
+	glog.Warningf("Processing project %s.", project.ProjectId)
 
 	client, err := storage.NewClient(*ctx)
 	if err != nil {
@@ -157,7 +162,13 @@ func processProject(wg *sync.WaitGroup, ctx *context.Context, objectCh chan GcsF
 	}
 
 	buckets := client.Buckets(*ctx, project.ProjectId)
+
 	for bucketAttrs, err := buckets.Next(); err != iterator.Done; bucketAttrs, err = buckets.Next() {
+		if err != nil {
+			glog.Errorf("Failed to list buckets in project %s: %s", project.ProjectId, err.Error())
+			EXIT_STATUS = 2
+			break
+		}
 		bucket := client.Bucket(bucketAttrs.Name)
 		var query *storage.Query = nil
 		if *includeVersions {
@@ -165,7 +176,12 @@ func processProject(wg *sync.WaitGroup, ctx *context.Context, objectCh chan GcsF
 		}
 		objects := bucket.Objects(*ctx, query)
 		for objectAttrs, err := objects.Next(); err != iterator.Done; objectAttrs, err = objects.Next() {
-			glog.Infof("Processing file %s (bucket %s, project %s)...", objectAttrs.Name, bucketAttrs.Name, project.ProjectId)
+			if err != nil {
+				glog.Errorf("Error processing files in bucket %s (project %s): %s", bucketAttrs.Name, project.ProjectId, err.Error())
+				EXIT_STATUS = 3
+				break
+			}
+			glog.Infof("Processing file %s (bucket %s, project %s).", objectAttrs.Name, bucketAttrs.Name, project.ProjectId)
 			item := GcsFile{ProjectId: project.ProjectId, BucketName: bucketAttrs.Name, Object: *objectAttrs}
 			objectCh <- item
 		}
@@ -175,10 +191,14 @@ func processProject(wg *sync.WaitGroup, ctx *context.Context, objectCh chan GcsF
 func main() {
 	os.Stderr.WriteString(fmt.Sprintf("Google Cloud Storage object metadata to BigQuery, version %s\n", VERSION))
 
-	outputFile = flag.String("file", "gcs.avro", "output file name (default gcs.avro)")
+	outputFile = flag.String("file", "gcs.avro", "output file name")
 	includeVersions = flag.Bool("versions", false, "include GCS object versions")
+	GOMAXPROCS = flag.Int("concurrency", 4, "concurrency (GOMAXPROCS)")
+	BUFFER_SIZE = flag.Int("buffer_size", 1000, "file buffer")
 	flag.Parse()
 
+	glog.Infof("Performance settings: GOMAXPROCS=%d, buffer size=%d", *GOMAXPROCS, *BUFFER_SIZE)
+	runtime.GOMAXPROCS(*GOMAXPROCS)
 	ctx := context.Background()
 
 	crmService, err := cloudresourcemanager.NewService(ctx)
@@ -191,12 +211,13 @@ func main() {
 	projectsList := make([]cloudresourcemanager.Project, 0)
 	pageToken := ""
 	for {
-		response, err := projectsService.List().PageToken(pageToken).Do()
+		response, err := projectsService.List().Filter("lifecycleState:ACTIVE").PageToken(pageToken).Do()
 		if err != nil {
 			panic(err)
 		}
 
 		for _, project := range response.Projects {
+			glog.Infof("Found project: %s (%d)", project.ProjectId, project.ProjectNumber)
 			projectsList = append(projectsList, *project)
 		}
 
@@ -208,7 +229,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	objectCh := make(chan GcsFile)
+	objectCh := make(chan GcsFile, *BUFFER_SIZE)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -222,7 +243,13 @@ func main() {
 		close(objectCh)
 	}()
 
-	schema, err := avro.ParseSchemaFile("gcs2bq.avsc")
+	_, err = os.Stat(AVRO_SCHEMA)
+	if os.IsNotExist(err) {
+		glog.Fatalf("Could not read Avro schema file: %s", AVRO_SCHEMA)
+		os.Exit(1)
+	}
+
+	schema, err := avro.ParseSchemaFile(AVRO_SCHEMA)
 	if err != nil {
 		panic(err)
 	}
@@ -260,5 +287,6 @@ func main() {
 	w.Flush()
 	dfw.Close()
 	f.Sync()
-	glog.Warning("Processing complete.")
+	glog.Warningf("Processing complete, output in: %s", *outputFile)
+	os.Exit(EXIT_STATUS)
 }
