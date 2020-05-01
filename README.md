@@ -26,8 +26,12 @@ Google Cloud Storage object metadata to BigQuery, version 0.1
 Usage of ./gcs2bq:
   -alsologtostderr
     	log to standard error as well as files
+  -buffer_size int
+    	file buffer (default 1000)
+  -concurrency int
+    	concurrency (GOMAXPROCS) (default 4)
   -file string
-    	output file name (default gcs.avro) (default "gcs.avro")
+    	output file name (default "gcs.avro")
   -log_backtrace_at value
     	when logging hits line file:N, emit a stack trace
   -log_dir string
